@@ -290,13 +290,56 @@ router.get("/stats/daily-summary", async (_req: Request, res: Response) => {
 
 // --- CRUD Operations ---
 
+// Allowlist of fields that can be updated via PUT
+const UPDATABLE_FIELDS = new Set([
+  "st",
+  "callLetters",
+  "qualityControlProcess",
+  "dataSource",
+  "type",
+  "airTemperatureValue",
+  "airTemperatureQuality",
+  "dewPointValue",
+  "dewPointQuality",
+  "pressureValue",
+  "pressureQuality",
+  "windDirectionAngle",
+  "windDirectionQuality",
+  "windType",
+  "windSpeedRate",
+  "windSpeedQuality",
+  "visibilityDistanceValue",
+  "visibilityDistanceQuality",
+  "visibilityVariabilityValue",
+  "visibilityVariabilityQuality",
+  "skyConditionCeilingHeightValue",
+  "skyConditionCeilingHeightQuality",
+  "skyConditionCeilingHeightDetermination",
+  "skyConditionCavok",
+  "precipEstDiscrepancy",
+  "precipEstWaterDepth",
+  "elevation",
+  "sections",
+]);
+
 // PUT /api/weather/:mongoId - Update an observation
 // MongoDB equivalent: db.weather.updateOne({ _id: ObjectId(mongoId) }, { $set: { ... } })
 router.put("/:mongoId", async (req: Request, res: Response) => {
   try {
+    // Sanitize input: only allow updatable fields, reject nested relations and protected fields
+    const sanitized: Record<string, unknown> = {};
+    for (const key of Object.keys(req.body)) {
+      if (UPDATABLE_FIELDS.has(key)) {
+        sanitized[key] = req.body[key];
+      }
+    }
+    if (Object.keys(sanitized).length === 0) {
+      res.status(400).json({ error: "No valid updatable fields provided", allowedFields: Array.from(UPDATABLE_FIELDS) });
+      return;
+    }
     const observation = await queries.updateObservation(
       req.params.mongoId,
-      req.body
+      sanitized
     );
     res.json({ data: observation });
   } catch (error) {

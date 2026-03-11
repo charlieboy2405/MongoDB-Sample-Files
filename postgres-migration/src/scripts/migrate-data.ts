@@ -482,17 +482,25 @@ async function migrateData(filePath: string) {
         );
       }
     } catch (error) {
-      totalErrors++;
-      if (totalErrors <= 5) {
-        console.error(`  Error processing document: ${error}`);
+      const failedCount = batch.length;
+      totalErrors += failedCount;
+      if (totalErrors <= 5 * BATCH_SIZE) {
+        console.error(`  Error processing batch of ${failedCount} documents: ${error}`);
       }
+      batch = [];
     }
   }
 
   // Process remaining batch
   if (batch.length > 0) {
-    await processBatch(batch);
-    totalProcessed += batch.length;
+    try {
+      await processBatch(batch);
+      totalProcessed += batch.length;
+    } catch (error) {
+      const failedCount = batch.length;
+      totalErrors += failedCount;
+      console.error(`  Error processing final batch of ${failedCount} documents: ${error}`);
+    }
   }
 
   const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
