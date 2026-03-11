@@ -435,8 +435,13 @@ async function migrateData() {
       batch.push(parsed);
 
       if (batch.length >= BATCH_SIZE) {
-        await processBatch(batch);
-        totalProcessed += batch.length;
+        try {
+          await processBatch(batch);
+          totalProcessed += batch.length;
+        } catch (batchErr) {
+          totalErrors += batch.length;
+          console.error(`Error processing batch of ${batch.length} documents: ${batchErr.message}`);
+        }
         batch = [];
 
         if (totalProcessed % 1000 === 0) {
@@ -452,8 +457,13 @@ async function migrateData() {
 
   // Process remaining batch
   if (batch.length > 0) {
-    await processBatch(batch);
-    totalProcessed += batch.length;
+    try {
+      await processBatch(batch);
+      totalProcessed += batch.length;
+    } catch (batchErr) {
+      totalErrors += batch.length;
+      console.error(`Error processing final batch of ${batch.length} documents: ${batchErr.message}`);
+    }
   }
 
   const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
