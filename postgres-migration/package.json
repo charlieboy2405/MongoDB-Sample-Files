@@ -1,0 +1,20 @@
+{
+  "name": "mongodb-to-postgres-migration",
+  "version": "1.0.0",
+  "description": "Migration tool to convert MongoDB weather data to PostgreSQL",
+  "main": "src/index.js",
+  "scripts": {
+    "create-schema": "node src/create-schema.js",
+    "migrate-data": "node src/migrate-data.js",
+    "verify": "node src/verify.js",
+    "queries-demo": "node src/queries-demo.js",
+    "full-migration": "node src/create-schema.js && node src/migrate-data.js && node src/verify.js",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0"
+  }
+}
