@@ -467,27 +467,37 @@ async function migrateData(filePath: string) {
   for await (const line of rl) {
     if (!line.trim()) continue;
 
+    // Parse and transform each line individually so a single bad document
+    // doesn't discard the entire accumulated batch
+    let transformed: ReturnType<typeof transformDocument>;
     try {
       const doc: MongoWeatherDocument = JSON.parse(line);
-      const transformed = transformDocument(doc);
-      batch.push(transformed);
+      transformed = transformDocument(doc);
+    } catch (parseError) {
+      totalErrors += 1;
+      if (totalErrors <= 10) {
+        console.error(`  Error parsing/transforming document: ${parseError}`);
+      }
+      continue;
+    }
 
-      if (batch.length >= BATCH_SIZE) {
+    batch.push(transformed);
+
+    if (batch.length >= BATCH_SIZE) {
+      try {
         await processBatch(batch);
         totalProcessed += batch.length;
-        batch = [];
-        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-        console.log(
-          `  Migrated ${totalProcessed} records (${elapsed}s elapsed)`
-        );
-      }
-    } catch (error) {
-      const failedCount = batch.length;
-      totalErrors += failedCount;
-      if (totalErrors <= 5 * BATCH_SIZE) {
-        console.error(`  Error processing batch of ${failedCount} documents: ${error}`);
+      } catch (batchError) {
+        totalErrors += batch.length;
+        if (totalErrors <= 10 * BATCH_SIZE) {
+          console.error(`  Error processing batch of ${batch.length} documents: ${batchError}`);
+        }
       }
       batch = [];
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(
+        `  Migrated ${totalProcessed} records (${elapsed}s elapsed)`
+      );
     }
   }
 
