@@ -1,0 +1,32 @@
+{
+  "name": "mongodb-to-postgres-migration",
+  "version": "1.0.0",
+  "description": "Migration from MongoDB to PostgreSQL for weather observation data",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "migrate:db": "npx prisma migrate dev --name init",
+    "migrate:data": "ts-node src/scripts/migrate-data.ts",
+    "migrate:verify": "ts-node src/scripts/verify-migration.ts",
+    "prisma:generate": "npx prisma generate",
+    "prisma:studio": "npx prisma studio",
+    "lint": "eslint src/**/*.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.9.0",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "prisma": "^5.22.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.0"
+  }
+}

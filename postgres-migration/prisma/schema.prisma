@@ -1,0 +1,236 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Main weather observation record - flattened from MongoDB document
+model WeatherObservation {
+  id                    Int      @id @default(autoincrement())
+  mongoId               String   @unique @map("mongo_id")
+  st                    String   // Station identifier
+  ts                    DateTime // Timestamp
+  longitude             Float?
+  latitude              Float?
+  positionType          String?  @map("position_type") // GeoJSON type (e.g. "Point")
+  elevation             Int
+  callLetters           String   @map("call_letters")
+  qualityControlProcess String   @map("quality_control_process")
+  dataSource            String   @map("data_source")
+  type                  String   // Observation type (e.g. "FM-13")
+
+  // Air Temperature (flattened - always present)
+  airTemperatureValue   Float    @map("air_temperature_value")
+  airTemperatureQuality String   @map("air_temperature_quality")
+
+  // Dew Point (flattened - always present)
+  dewPointValue         Float    @map("dew_point_value")
+  dewPointQuality       String   @map("dew_point_quality")
+
+  // Pressure (flattened - always present)
+  pressureValue         Float    @map("pressure_value")
+  pressureQuality       String   @map("pressure_quality")
+
+  // Wind (flattened - always present)
+  windDirectionAngle    Int      @map("wind_direction_angle")
+  windDirectionQuality  String   @map("wind_direction_quality")
+  windType              String   @map("wind_type")
+  windSpeedRate         Float    @map("wind_speed_rate")
+  windSpeedQuality      String   @map("wind_speed_quality")
+
+  // Visibility (flattened - always present)
+  visibilityDistanceValue   Int    @map("visibility_distance_value")
+  visibilityDistanceQuality String @map("visibility_distance_quality")
+  visibilityVariabilityValue   String @map("visibility_variability_value")
+  visibilityVariabilityQuality String @map("visibility_variability_quality")
+
+  // Sky Condition (flattened - always present)
+  skyConditionCeilingHeightValue         Int    @map("sky_condition_ceiling_height_value")
+  skyConditionCeilingHeightQuality       String @map("sky_condition_ceiling_height_quality")
+  skyConditionCeilingHeightDetermination String @map("sky_condition_ceiling_height_determination")
+  skyConditionCavok                      String @map("sky_condition_cavok")
+
+  // Precipitation Estimated Observation (flattened - always present)
+  precipEstDiscrepancy      String @map("precip_est_discrepancy")
+  precipEstWaterDepth       Int    @map("precip_est_water_depth")
+
+  // Sections stored as array
+  sections String[]
+
+  // Relations to child tables (optional sub-documents)
+  atmosphericPressureChange      AtmosphericPressureChange?
+  atmosphericPressureObservation AtmosphericPressureObservation?
+  seaSurfaceTemperature          SeaSurfaceTemperature?
+  waveMeasurement                WaveMeasurement?
+  skyConditionObservation        SkyConditionObservation?
+  pastWeatherObservations        PastWeatherObservation[]
+  presentWeatherObservations     PresentWeatherObservation[]
+  skyCoverLayers                 SkyCoverLayer[]
+  extremeAirTemperatures         ExtremeAirTemperature[]
+  liquidPrecipitations           LiquidPrecipitation[]
+
+  @@map("weather_observations")
+  @@index([st])
+  @@index([ts])
+  @@index([callLetters])
+  @@index([type])
+}
+
+/// Atmospheric pressure change data (~84% of observations)
+model AtmosphericPressureChange {
+  id                      Int    @id @default(autoincrement())
+  observationId           Int    @unique @map("observation_id")
+  tendencyCode            String @map("tendency_code")
+  tendencyQuality         String @map("tendency_quality")
+  quantity3HoursValue     Float  @map("quantity_3hours_value")
+  quantity3HoursQuality   String @map("quantity_3hours_quality")
+  quantity24HoursValue    Float  @map("quantity_24hours_value")
+  quantity24HoursQuality  String @map("quantity_24hours_quality")
+
+  observation WeatherObservation @relation(fields: [observationId], references: [id], onDelete: Cascade)
+
+  @@map("atmospheric_pressure_changes")
+}
+
+/// Atmospheric pressure observation data (~0.6% of observations)
+model AtmosphericPressureObservation {
+  id                        Int    @id @default(autoincrement())
+  observationId             Int    @unique @map("observation_id")
+  stationPressureValue      Float  @map("station_pressure_value")
+  stationPressureQuality    String @map("station_pressure_quality")
+  altimeterSettingValue     Float  @map("altimeter_setting_value")
+  altimeterSettingQuality   String @map("altimeter_setting_quality")
+
+  observation WeatherObservation @relation(fields: [observationId], references: [id], onDelete: Cascade)
+
+  @@map("atmospheric_pressure_observations")
+}
+
+/// Sea surface temperature (~80% of observations)
+model SeaSurfaceTemperature {
+  id            Int    @id @default(autoincrement())
+  observationId Int    @unique @map("observation_id")
+  value         Float
+  quality       String
+
+  observation WeatherObservation @relation(fields: [observationId], references: [id], onDelete: Cascade)
+
+  @@map("sea_surface_temperatures")
+}
+
+/// Wave measurement data (~75% of observations)
+model WaveMeasurement {
+  id            Int    @id @default(autoincrement())
+  observationId Int    @unique @map("observation_id")
+  method        String
+  wavePeriod    Int    @map("wave_period")
+  waveHeight    Float  @map("wave_height")
+  waveQuality   String @map("wave_quality")
+  seaStateCode  String @map("sea_state_code")
+  seaStateQuality String @map("sea_state_quality")
+
+  observation WeatherObservation @relation(fields: [observationId], references: [id], onDelete: Cascade)
+
+  @@map("wave_measurements")
+}
+
+/// Sky condition observation data (~94% of observations)
+model SkyConditionObservation {
+  id                        Int    @id @default(autoincrement())
+  observationId             Int    @unique @map("observation_id")
+  totalCoverageValue        String @map("total_coverage_value")
+  totalCoverageOpaque       String @map("total_coverage_opaque")
+  totalCoverageQuality      String @map("total_coverage_quality")
+  lowestCloudCoverageValue  String @map("lowest_cloud_coverage_value")
+  lowestCloudCoverageQuality String @map("lowest_cloud_coverage_quality")
+  lowCloudGenusValue        String @map("low_cloud_genus_value")
+  lowCloudGenusQuality      String @map("low_cloud_genus_quality")
+  lowestCloudBaseHeightValue Int   @map("lowest_cloud_base_height_value")
+  lowestCloudBaseHeightQuality String @map("lowest_cloud_base_height_quality")
+  midCloudGenusValue        String @map("mid_cloud_genus_value")
+  midCloudGenusQuality      String @map("mid_cloud_genus_quality")
+  highCloudGenusValue       String @map("high_cloud_genus_value")
+  highCloudGenusQuality     String @map("high_cloud_genus_quality")
+
+  observation WeatherObservation @relation(fields: [observationId], references: [id], onDelete: Cascade)
+
+  @@map("sky_condition_observations")
+}
+
+/// Past weather observation (manual) - array in MongoDB (~90% of observations)
+model PastWeatherObservation {
+  id                          Int    @id @default(autoincrement())
+  observationId               Int    @map("observation_id")
+  atmosphericConditionValue   String @map("atmospheric_condition_value")
+  atmosphericConditionQuality String @map("atmospheric_condition_quality")
+  periodValue                 Int    @map("period_value")
+  periodQuality               String @map("period_quality")
+
+  observation WeatherObservation @relation(fields: [observationId], references: [id], onDelete: Cascade)
+
+  @@map("past_weather_observations")
+  @@index([observationId])
+}
+
+/// Present weather observation (manual) - array in MongoDB (~91% of observations)
+model PresentWeatherObservation {
+  id            Int    @id @default(autoincrement())
+  observationId Int    @map("observation_id")
+  condition     String
+  quality       String
+
+  observation WeatherObservation @relation(fields: [observationId], references: [id], onDelete: Cascade)
+
+  @@map("present_weather_observations")
+  @@index([observationId])
+}
+
+/// Sky cover layer data - array in MongoDB (~7.4% of observations)
+model SkyCoverLayer {
+  id              Int    @id @default(autoincrement())
+  observationId   Int    @map("observation_id")
+  coverageValue   String @map("coverage_value")
+  coverageQuality String @map("coverage_quality")
+  baseHeightValue Int    @map("base_height_value")
+  baseHeightQuality String @map("base_height_quality")
+  cloudTypeValue  String @map("cloud_type_value")
+  cloudTypeQuality String @map("cloud_type_quality")
+
+  observation WeatherObservation @relation(fields: [observationId], references: [id], onDelete: Cascade)
+
+  @@map("sky_cover_layers")
+  @@index([observationId])
+}
+
+/// Extreme air temperature data - array in MongoDB (~0.1% of observations)
+model ExtremeAirTemperature {
+  id            Int    @id @default(autoincrement())
+  observationId Int    @map("observation_id")
+  code          String
+  value         Float
+  period        Float
+  quantity      String
+
+  observation WeatherObservation @relation(fields: [observationId], references: [id], onDelete: Cascade)
+
+  @@map("extreme_air_temperatures")
+  @@index([observationId])
+}
+
+/// Liquid precipitation data - array in MongoDB (~1.1% of observations)
+model LiquidPrecipitation {
+  id            Int    @id @default(autoincrement())
+  observationId Int    @map("observation_id")
+  condition     String
+  depth         Int
+  period        Int
+  quality       String
+
+  observation WeatherObservation @relation(fields: [observationId], references: [id], onDelete: Cascade)
+
+  @@map("liquid_precipitations")
+  @@index([observationId])
+}
